@@ -172,11 +172,11 @@ client_get_parent(Client *c)
 {
 	Client *p = NULL;
 #ifdef XWAYLAND
-    if (client_is_x11(c)) {
-        if (c->surface.xwayland->parent)
-            toplevel_from_wlr_surface(c->surface.xwayland->parent->surface, &p, NULL);
-        return p;
-    }
+	if (client_is_x11(c)) {
+		if (c->surface.xwayland->parent)
+			toplevel_from_wlr_surface(c->surface.xwayland->parent->surface, &p, NULL);
+		return p;
+	}
 #endif
 	if (c->surface.xdg->toplevel->parent)
 		toplevel_from_wlr_surface(c->surface.xdg->toplevel->parent->base->surface, &p, NULL);
@@ -187,12 +187,12 @@ static inline int
 client_has_children(Client *c)
 {
 #ifdef XWAYLAND
-    if (client_is_x11(c))
-        return !wl_list_empty(&c->surface.xwayland->children);
+	if (client_is_x11(c))
+		return !wl_list_empty(&c->surface.xwayland->children);
 #endif
-    /* surface.xdg->link is never empty because it always contains at least the
-     * surface itself. */
-    return wl_list_length(&c->surface.xdg->link) > 1;
+	/* surface.xdg->link is never empty because it always contains at least the
+	 * surface itself. */
+	return wl_list_length(&c->surface.xdg->link) > 1;
 }
 
 static inline const char *
@@ -350,7 +350,7 @@ client_set_size(Client *c, uint32_t width, uint32_t height)
 #ifdef XWAYLAND
 	if (client_is_x11(c)) {
 		wlr_xwayland_surface_configure(c->surface.xwayland,
-				c->geom.x, c->geom.y, width, height);
+				c->geom.x + c->bw, c->geom.y + c->bw, width, height);
 		return 0;
 	}
 #endif
@@ -379,10 +379,8 @@ static inline void
 client_set_suspended(Client *c, int suspended)
 {
 #ifdef XWAYLAND
-	if (client_is_x11(c)) {
-		wlr_xwayland_surface_set_withdrawn(c->surface.xwayland, suspended);
+	if (client_is_x11(c))
 		return;
-	}
 #endif
 
 	wlr_xdg_toplevel_set_suspended(c->surface.xdg->toplevel, suspended);
@@ -393,8 +391,8 @@ client_wants_focus(Client *c)
 {
 #ifdef XWAYLAND
 	return client_is_unmanaged(c)
-		&& wlr_xwayland_or_surface_wants_focus(c->surface.xwayland)
-		&& wlr_xwayland_icccm_input_model(c->surface.xwayland) != WLR_ICCCM_INPUT_MODEL_NONE;
+		&& wlr_xwayland_surface_override_redirect_wants_focus(c->surface.xwayland)
+		&& wlr_xwayland_surface_icccm_input_model(c->surface.xwayland) != WLR_ICCCM_INPUT_MODEL_NONE;
 #endif
 	return 0;
 }
