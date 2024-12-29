@@ -2025,6 +2025,8 @@ motionnotify(uint32_t time, struct wlr_input_device *device, double dx, double d
 		double dx_unaccel, double dy_unaccel)
 {
 	double sx = 0, sy = 0, sx_confined, sy_confined;
+	int cx = 0, cy = 0, nx = 0, ny = 0;
+	int nwidth = 0, nheight = 0;
 	Client *c = NULL, *w = NULL;
 	LayerSurface *l = NULL;
 	struct wlr_surface *surface = NULL;
@@ -2085,8 +2087,26 @@ motionnotify(uint32_t time, struct wlr_input_device *device, double dx, double d
 			.width = grabc->geom.width, .height = grabc->geom.height}, 1);
 		return;
 	} else if (cursor_mode == CurResize) {
-		resize(grabc, (struct wlr_box){.x = grabc->geom.x, .y = grabc->geom.y,
-			.width = (int)round(cursor->x) - grabc->geom.x, .height = (int)round(cursor->y) - grabc->geom.y}, 1);
+		cx = (int)round(cursor->x) - grabc->geom.x;
+		if (cx < (double)grabc->geom.width / 2) {
+			nx = (int)round(cursor->x);
+			nwidth = grabc->geom.width - cx;
+		} else {
+			nx = grabc->geom.x;
+			nwidth = cx;
+		}
+
+		cy = (int)round(cursor->y) - grabc->geom.y;
+		if (cy < (double)grabc->geom.height / 2) {
+			ny = (int)round(cursor->y);
+			nheight = grabc->geom.height - cy;
+		} else {
+			ny = grabc->geom.y;
+			nheight = cy;
+		}
+
+		resize(grabc, (struct wlr_box){.x = nx, .y = ny,
+			.width = nwidth, .height = nheight}, 1);
 		return;
 	}
 
@@ -2117,6 +2137,9 @@ motionrelative(struct wl_listener *listener, void *data)
 void
 moveresize(const Arg *arg)
 {
+	static char image[32];
+	const char *horizontal_position_name = NULL;
+	const char *vertical_position_name = NULL;
 	if (cursor_mode != CurNormal && cursor_mode != CurPressed)
 		return;
 	xytonode(cursor->x, cursor->y, NULL, &grabc, NULL, NULL, NULL);
@@ -2134,10 +2157,25 @@ moveresize(const Arg *arg)
 	case CurResize:
 		/* Doesn't work for X11 output - the next absolute motion event
 		 * returns the cursor to where it started */
-		wlr_cursor_warp_closest(cursor, NULL,
-				grabc->geom.x + grabc->geom.width,
-				grabc->geom.y + grabc->geom.height);
-		wlr_cursor_set_xcursor(cursor, cursor_mgr, "se-resize");
+		grabcx = grabc->geom.x;
+		if ((cursor->x - grabcx) < (double)grabc->geom.width / 2) {
+			horizontal_position_name = "left";
+		} else {
+			horizontal_position_name = "right";
+			grabcx += grabc->geom.width;
+		}
+
+		grabcy = grabc->geom.y;
+		if ((cursor->y - grabcy) < (double)grabc->geom.height / 2) {
+			vertical_position_name = "top";
+		} else {
+			grabcy += grabc->geom.height;
+			vertical_position_name = "bottom";
+		}
+
+		snprintf(image, sizeof(image), "%s_%s_corner", vertical_position_name, horizontal_position_name);
+		wlr_cursor_warp_closest(cursor, NULL, grabcx, grabcy);
+		wlr_cursor_set_xcursor(cursor, cursor_mgr, image);
 		break;
 	}
 }
